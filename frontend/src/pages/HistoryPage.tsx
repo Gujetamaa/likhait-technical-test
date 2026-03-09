@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getExpenses, createExpense } from "../services/api";
+import { getExpenses, createExpense, fetchCategories, createCategory } from "../services/api";
 import { Expense, ExpenseFormData } from "../types";
 import YearNavigation from "../components/YearNavigation";
 import { MonthNavigation } from "../components/MonthNavigation";
@@ -13,6 +13,40 @@ const HistoryPage: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);  
+
+  const loadCategories = async () => {
+    try {
+      const data = await fetchCategories();
+      setCategoryOptions(data.map((category) => category.name));
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  };
+
+  useEffect(() => {
+    updateURL(selectedYear, selectedMonth);
+    loadCategories();
+  }, []);  
+
+  const handleAddCategory = async () => {
+    try {
+      setIsCreatingCategory(true);
+      await createCategory(newCategoryName.trim());
+      await loadCategories();
+      setNewCategoryName("");
+      setIsCategoryModalOpen(false);
+    } catch (error) {
+      console.error("Error creating category:", error);
+      alert(error instanceof Error ? error.message : "Failed to create category");
+    } finally {
+      setIsCreatingCategory(false);
+    }
+  };
 
   // Get year and month from URL params, default to current date if not provided
   const getInitialYearMonth = () => {
@@ -184,11 +218,51 @@ const HistoryPage: React.FC = () => {
         onClose={() => setIsModalOpen(false)}
         title="Add New Expense"
       >
-        <ExpenseForm
-          onSubmit={handleAddExpense}
-          onCancel={() => setIsModalOpen(false)}
-        />
+      <ExpenseForm
+        onSubmit={handleAddExpense}
+        onCancel={() => setIsModalOpen(false)}
+        categories={categoryOptions}
+        onAddCategoryClick={() => setIsCategoryModalOpen(true)}
+      />
       </Modal>
+
+      <Modal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        title="Add New Category"
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <input
+            type="text"
+            value={newCategoryName}
+            onChange={(e) => setNewCategoryName(e.target.value)}
+            placeholder="Enter category name"
+            style={{
+              padding: "12px",
+              borderRadius: "8px",
+              border: "1px solid #ccc",
+              fontSize: "16px",
+            }}
+          />
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <Button
+              variant="primary"
+              onClick={handleAddCategory}
+              disabled={isCreatingCategory || !newCategoryName.trim()}
+              fullWidth
+            >
+              {isCreatingCategory ? "Creating..." : "Create Category"}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setIsCategoryModalOpen(false)}
+              disabled={isCreatingCategory}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>      
     </div>
   );
 };
