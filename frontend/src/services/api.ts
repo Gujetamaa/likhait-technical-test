@@ -70,7 +70,8 @@ export async function createExpense(data: ExpenseFormData): Promise<Expense> {
   });
 
   if (!response.ok) {
-    throw new Error("Failed to create expense");
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData?.errors?.join(", ") || "Failed to create expense");
   }
 
   return response.json();
@@ -109,4 +110,4 @@ export async function deleteExpense(id: number): Promise<void> {
   if (!response.ok) {
     throw new Error("Failed to delete expense");
   }
-}
+} 
